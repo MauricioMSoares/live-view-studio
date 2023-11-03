@@ -75,12 +75,13 @@ defmodule LiveViewStudioWeb.ServersLive do
       <div class="main">
         <div class="wrapper">
           <%= if @live_action == :new do %>
-            <.form for={@form} phx-submit="save">
+            <.form for={@form} phx-submit="save" phx-change="validate">
               <div class="field">
                 <.input
                   field={@form[:name]}
                   placeholder="Name"
                   autocomplete="off"
+                  phx-debounce="blur"
                 />
               </div>
               <div class="field">
@@ -88,6 +89,7 @@ defmodule LiveViewStudioWeb.ServersLive do
                   field={@form[:framework]}
                   placeholder="Framework"
                   autocomplete="off"
+                  phx-debounce="blur"
                 />
               </div>
               <div class="field">
@@ -96,6 +98,7 @@ defmodule LiveViewStudioWeb.ServersLive do
                   type="number"
                   placeholder="Size (MB)"
                   autocomplete="off"
+                  phx-debounce="blur"
                 />
               </div>
               <.button phx-disable-with="Saving...">
@@ -105,6 +108,9 @@ defmodule LiveViewStudioWeb.ServersLive do
                 Cancel
               </.link>
             </.form>
+            <pre>
+              <%#= inspect(@form, pretty: true) %>
+            </pre>
           <% else %>
             <.server server={@selected_server} />
           <% end %>
@@ -147,6 +153,15 @@ defmodule LiveViewStudioWeb.ServersLive do
       </div>
     </div>
     """
+  end
+
+  def handle_event("validate", %{"server" => server_params}, socket) do
+    changeset =
+      %Server{}
+      |> Servers.change_server(server_params)
+      |> Map.put(:action, :validate)
+
+    {:noreply, assign_form(socket, changeset)}
   end
 
   def handle_event("drink", _, socket) do
