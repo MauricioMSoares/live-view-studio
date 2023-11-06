@@ -13,7 +13,7 @@ defmodule LiveViewStudioWeb.VolunteerFormComponent do
   def update(assigns, socket) do
     socket =
       socket
-      |> assign(socket, assigns)
+      |> assign(assigns)
       |> assign(:count, assigns.count + 1)
 
     {:ok, socket}
@@ -63,8 +63,7 @@ defmodule LiveViewStudioWeb.VolunteerFormComponent do
 
   def handle_event("save", %{"volunteer" => volunteer_params}, socket) do
     case Volunteers.create_volunteer(volunteer_params) do
-      {:ok, volunteer} ->
-        send(self(), {__MODULE__, :volunteer_created, volunteer})
+      {:ok, _volunteer} ->
 
         changeset = Volunteers.change_volunteer(%Volunteer{})
         socket = put_flash(socket, :info, "Volunteer successfully checked in!")
