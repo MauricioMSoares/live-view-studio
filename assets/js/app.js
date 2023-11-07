@@ -21,12 +21,40 @@ import "phoenix_html"
 import { Socket } from "phoenix"
 import { LiveSocket } from "phoenix_live_view"
 import topbar from "../vendor/topbar"
+import flatpickr from "../vendor/flatpickr"
+
+let Hooks = {}
+
+Hooks.Calendar= {
+  mounted() {
+    this.pickr = flatpickr(this.el, {
+      inline: true,
+      mode: "range",
+      showMonths: 2,
+      onChange: (selectedDates) => {
+        if (selectedDates.length != 2) return;
+        this.pushEvent("dates-picked", selectedDates)
+      }
+    })
+    this.handleEvent("add-unavailable-dates", (dates) => {
+      this.pickr.set("disable", [dates, ...this.pickr.config.disable])
+    })
+
+    pushEvent("unavailable-dates", {}, (reply, ref) => {
+      this.pickr.set("disable", reply.dates)
+    })
+  },
+  destroyed() {
+    this.pickr.destroy()
+  }
+}
 
 let csrfToken =
   document.querySelector("meta[name='csrf-token']").getAttribute("content")
 
 let liveSocket = new LiveSocket("/live", Socket, {
-  params: { _csrf_token: csrfToken }
+  params: { _csrf_token: csrfToken },
+  hooks: Hooks
 });
 
 // Show progress bar on live navigation and form submits
