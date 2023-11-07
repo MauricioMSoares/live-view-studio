@@ -73,6 +73,9 @@ defmodule LiveViewStudioWeb.ServersLive do
             <.server server={@selected_server} />
           <% end %>
           <div class="links">
+            <.link navigate={~p"/topsecret"}>
+              Top Secret
+            </.link>
             <.link navigate={~p"/light"}>
               Adjust Lights
             </.link>
