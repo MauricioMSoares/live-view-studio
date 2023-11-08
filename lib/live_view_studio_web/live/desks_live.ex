@@ -4,6 +4,10 @@ defmodule LiveViewStudioWeb.DesksLive do
   alias LiveViewStudio.Desks
   alias LiveViewStudio.Desks.Desk
 
+  @s3_bucket "liveview-uploads"
+  @s3_url "//#{@s3_bucket}.s3.amazonaws.com"
+  @s3_region "us-west-2"
+
   def mount(_params, _session, socket) do
     if connected?(socket), do: Desks.subscribe()
 
@@ -18,7 +22,8 @@ defmodule LiveViewStudioWeb.DesksLive do
         :photos,
         accept: ~w(.png .jpeg .jpg),
         max_entries: 3,
-        max_file_size: 10_000_000
+        max_file_size: 10_000_000,
+        external: &presign_upload/2
       )
 
     {:ok, stream(socket, :desks, Desks.list_desks())}
@@ -42,21 +47,8 @@ defmodule LiveViewStudioWeb.DesksLive do
     # URL path: /uploads/abc-1.png
 
     photo_locations =
-      consume_uploaded_entries(socket, :photos, fn meta, entry ->
-        dest =
-          Path.join([
-            "priv",
-            "static",
-            "uploads",
-            "#{entry.uuid}-#{entry.client_name}"
-          ])
-
-        File.mkdir_p!(Path.dirname(dest))
-        File.cp!(meta.path, dest)
-
-        url_path = static_path(socket, "/uploads/#{Path.basename(dest)}")
-
-        {:ok, url_path}
+      consume_uploaded_entries(socket, :photos, fn _meta, entry ->
+        {:ok, Path.join(@s3_url, filename(entry))}
       end)
 
     params = Map.put(params, "photo_locations", photo_locations)
@@ -77,5 +69,34 @@ defmodule LiveViewStudioWeb.DesksLive do
 
   defp assign_form(socket, %Ecto.Changeset{} = changeset) do
     assign(socket, :form, to_form(changeset))
+  end
+
+  defp presign_upload(entry, socket) do
+    config = %{
+      region: @s3_region,
+      access_key_id: System.fetch_env!("AWS_ACCESS_KEY_ID"),
+      secret_access_key: System.fetch_env!("AWS_SECRET_ACCESS_KEY")
+    }
+
+    {:ok, fields} =
+      SimpleS3Upload.sign_form_upload(config, @s3_bucket,
+        key: filename(entry),
+        content_type: entry.client_type,
+        max_file_size: socket.assigns.uploads.photos.max_file_size,
+        expires_in: :timer.hours(1)
+      )
+
+    metadata = %{
+      uploader: "S3",
+      key: filename(entry),
+      url: @s3_url,
+      fields: fields
+    }
+
+    {:ok, metadata, socket}
+  end
+
+  defp filename(entry) do
+    "#{entry.uuid}-#{entry.client_name}"
   end
 end
