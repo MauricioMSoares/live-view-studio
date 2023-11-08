@@ -8,11 +8,11 @@ defmodule LiveViewStudioWeb.DonationsLive do
   end
 
   def handle_params(params, _uri, socket) do
-    sort_by = valid_sort_by(params)
-    sort_order = valid_sort_order(params)
+    sort_by = (params["sort_by"] || "id") |> String.to_atom()
+    sort_order = (params["sort_order"] || "asc") |> String.to_atom()
 
-    page = param_to_integer(params["page"], 1)
-    per_page = param_to_integer(params["per_page"], 5)
+    page = (params["page"] || "1") |> String.to_integer()
+    per_page = (params["per_page"] || "5") |> String.to_integer()
 
     options = %{
       sort_by: sort_by,
@@ -53,6 +53,16 @@ defmodule LiveViewStudioWeb.DonationsLive do
     </.link>
     """
   end
+
+  def handle_event("paginate", %{"key" => "ArrowRight"}, socket) do
+    {:noreply, goto_page(socket, socket.assigns.options.page + 1)}
+  end
+
+  def handle_event("paginate", %{"key" => "ArrowLeft"}, socket) do
+    {:noreply, goto_page(socket, socket.assigns.options.page - 1)}
+  end
+
+  def handle_event("paginate", _, socket), do: {:noreply, socket}
 
   def handle_event("select-per-page", %{"per-page" => per_page}, socket) do
     params = %{socket.assigns.options | per_page: per_page}
@@ -118,4 +128,12 @@ defmodule LiveViewStudioWeb.DonationsLive do
       end
     end
   end
+
+  defp goto_page(socket, page) when page > 0 do
+    params = %{socket.assigns.options | page: page}
+
+    push_patch(socket, to: ~p"/donations?#{params}")
+  end
+
+  defp goto_page(socket, _page), do: socket
 end
